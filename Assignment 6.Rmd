@@ -1,0 +1,829 @@
+---
+title: "Assignment 6"
+author: "Kyle Walker"
+date: "10/18/2019"
+output: html_document
+---
+
+## Assignment 6. Data Visualization with ggplot2
+### Submission Instruction. You will need to submit on Blackboard, in the Assignment section, a link to your assignment on your Github Webpage. Following this to create a github webpage and posted a link to your assignment.
+```{r}
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(gganimate)
+c2015 <- read_excel("C:/Users/student/Documents/Senior Year/MATH 421/Assignment 2/c2015.xlsx")
+#Fixing Sex
+c2015$SEX[is.na(c2015$SEX)]<- "Female"
+#Fixing Age
+c2015$AGE[c2015$AGE == 'Less than 1'] <- "0"
+c2015$AGE <- as.numeric(c2015$AGE)
+c2015$AGE[is.na(c2015$AGE)] <- mean(c2015$AGE)
+#Fixing Trav_Sp
+c2015$TRAV_SP <- str_replace(c2015$TRAV_SP, " MPH", "")
+c2015$TRAV_SP <- str_replace(c2015$TRAV_SP, "Not Rep", "")
+c2015$TRAV_SP <- str_replace(c2015$TRAV_SP, "Unknown", "")
+c2015$TRAV_SP <- as.numeric(c2015$TRAV_SP)
+c2015 = c2015[!(is.na(c2015$TRAV_SP)),]
+#Getting rid of missing data
+c2015 = c2015 %>%
+  filter_all(~!is.na(.))
+c2015 = c2015 %>%
+  filter_all(~!(.=="Unknown"))
+c2015 = c2015 %>%
+  filter_all(~!(.=="Not Rep"))
+c2015 = c2015 %>%
+  filter_all(~!(.=="Not Reported"))
+c2015 = c2015 %>%
+  filter_all(~!(.==str_detect(.,"Not Rep")))
+c2015 = c2015 %>%
+  filter_all(~!(.==str_detect(.,"Unknown")))
+c2015 = c2015 %>%
+  filter(SEAT_POS == 'Front Seat, Left Side')
+```
+
+#### 1. Continue with Question 15 of Assignment 5. We want to add a moving/transition variable to the grapth using the gganimate package. Do the follows to achieve that
+##### Install and load the gganimate package
+##### Group the data by SEX, INJ_SEV and MONTH then calculate the mean travel speed
+##### Reuse the code and 15 and adding transition_states(MONTH) to add the MONTH variable
+##### Adding a title using labs(title = 'MONTH = {closest_state}')
+```{r}
+cum_mean <- mean(c2015$TRAV_SP)
+cum_sd <- sd(c2015$TRAV_SP)
+gph15 <- c2015 %>%
+  group_by(MONTH) %>% 
+     summarize(spd_z = round(((mean(TRAV_SP,na.rm=T)- cum_mean) / cum_sd),2)) %>% 
+       mutate(type = ifelse(spd_z > 0 , "above", "below")) %>% 
+         arrange(spd_z)
+
+ggplot(gph15, aes(x=reorder(MONTH,spd_z), y=spd_z, label = spd_z)) +
+  geom_bar(stat='identity', aes(fill = type, width=0.5)) +
+    scale_fill_manual(name = "Average Speed",
+                      labels = c("Above Average" , "Below Average"),
+                      values = c("above" = "#00ba38", "below" = "#f8766d")) +
+  labs(subtitle = "Normalized Average Speed per Month",
+       title = 'MONTH = {closest_state}',
+       x= "Month",
+       y= "Normalized Speed") +
+  coord_flip() +
+  transition_states(MONTH)
+```
+
+
+#### 2. Plot bar charts of DRINKING filled by SEX with moving (transition) variable MONTH. Can you add the frequency to each bar?
+```{r}
+ggplot(c2015, aes(x=MONTH, DRINKING)) +
+  geom_bar(stat= 'identity', aes(fill= SEX, width= 0.5)) +
+  labs(subtitle = 'MONTH = {closest_state}',
+       title = "Drinking by Month per Sex",
+       x= "Month",
+       y= "Drinking") +
+  coord_flip() +
+  transition_states(MONTH)
+```
+
+
+#### 3. In this question, we work with the household debt and credit data. Do the follows to import the data to R
+##### Download the data at this link. (Notice that if you use read_excel to read this file, you may not have the desired outcome.)
+##### Install the datapasta package so that we can copy and paste the data to R
+##### Open the downloaded file, tab Page 3 Data. Name the first column of the data table as Quarter
+##### Select and copy the data table including the variables
+##### In Rstudio: Tools -> Addins -> Browse Addins -> Select Paste as tribble -> Excute
+##### Don’t forget to name the data
+```{r}
+hhd19 <- tibble::tribble(
+  ~Quarter, ~Mortgage, ~HE.Revolving, ~Auto.Loan, ~Credit.Card, ~Student.Loan, ~Other, ~Total,
+   "03:Q1",      4.94,          0.24,       0.64,         0.69,          0.24,   0.48,   7.23,
+   "03:Q2",      5.08,          0.26,       0.62,         0.69,          0.24,   0.49,   7.38,
+   "03:Q3",      5.18,          0.27,       0.68,         0.69,          0.25,   0.48,   7.56,
+   "03:Q4",      5.66,           0.3,        0.7,          0.7,          0.25,   0.45,   8.07,
+   "04:Q1",      5.84,          0.33,       0.72,          0.7,          0.26,   0.45,   8.29,
+   "04:Q2",      5.97,          0.37,       0.74,          0.7,          0.26,   0.42,   8.46,
+   "04:Q3",      6.21,          0.43,       0.75,         0.71,          0.33,   0.41,   8.83,
+   "04:Q4",      6.36,          0.47,       0.73,         0.72,          0.35,   0.42,   9.04,
+   "05:Q1",      6.51,           0.5,       0.73,         0.71,          0.36,   0.39,   9.21,
+   "05:Q2",       6.7,          0.53,       0.77,         0.72,          0.37,    0.4,   9.49,
+   "05:Q3",      6.91,          0.54,       0.83,         0.73,          0.38,   0.41,   9.79,
+   "05:Q4",       7.1,          0.57,       0.79,         0.74,          0.39,   0.42,     10,
+   "06:Q1",      7.44,          0.58,       0.79,         0.72,          0.43,   0.42,  10.38,
+   "06:Q2",      7.76,          0.59,        0.8,         0.74,          0.44,   0.42,  10.75,
+   "06:Q3",      8.05,           0.6,       0.82,         0.75,          0.45,   0.44,  11.11,
+   "06:Q4",      8.23,           0.6,       0.82,         0.77,          0.48,   0.41,  11.31,
+   "07:Q1",      8.42,          0.61,       0.79,         0.76,          0.51,    0.4,   11.5,
+   "07:Q2",      8.71,          0.62,       0.81,          0.8,          0.51,   0.41,  11.85,
+   "07:Q3",      8.93,          0.63,       0.82,         0.82,          0.53,   0.41,  12.13,
+   "07:Q4",       9.1,          0.65,       0.82,         0.84,          0.55,   0.42,  12.37,
+   "08:Q1",      9.23,          0.66,       0.81,         0.84,          0.58,   0.42,  12.54,
+   "08:Q2",      9.27,          0.68,       0.81,         0.85,          0.59,    0.4,   12.6,
+   "08:Q3",      9.29,          0.69,       0.81,         0.86,          0.61,   0.41,  12.68,
+   "08:Q4",      9.26,          0.71,       0.79,         0.87,          0.64,   0.41,  12.67,
+   "09:Q1",      9.14,          0.71,       0.77,         0.84,          0.66,   0.41,  12.53,
+   "09:Q2",      9.06,          0.71,       0.74,         0.82,          0.68,   0.39,  12.41,
+   "09:Q3",      8.94,          0.71,       0.74,         0.81,          0.69,   0.38,  12.28,
+   "09:Q4",      8.84,          0.71,       0.72,          0.8,          0.72,   0.38,  12.17,
+   "10:Q1",      8.83,           0.7,        0.7,         0.76,          0.76,   0.36,  12.12,
+   "10:Q2",       8.7,          0.68,        0.7,         0.74,          0.76,   0.35,  11.94,
+   "10:Q3",      8.61,          0.67,       0.71,         0.73,          0.78,   0.34,  11.84,
+   "10:Q4",      8.45,          0.67,       0.71,         0.73,          0.81,   0.34,  11.71,
+   "11:Q1",      8.54,          0.64,       0.71,          0.7,          0.84,   0.33,  11.75,
+   "11:Q2",      8.52,          0.62,       0.71,         0.69,          0.85,   0.33,  11.73,
+   "11:Q3",       8.4,          0.64,       0.73,         0.69,          0.87,   0.33,  11.66,
+   "11:Q4",      8.27,          0.63,       0.73,          0.7,          0.87,   0.33,  11.54,
+   "12:Q1",      8.19,          0.61,       0.74,         0.68,           0.9,   0.32,  11.44,
+   "12:Q2",      8.15,          0.59,       0.75,         0.67,          0.91,   0.31,  11.38,
+   "12:Q3",      8.03,          0.57,       0.77,         0.67,          0.96,   0.31,  11.31,
+   "12:Q4",      8.03,          0.56,       0.78,         0.68,          0.97,   0.32,  11.34,
+   "13:Q1",      7.93,          0.55,       0.79,         0.66,          0.99,   0.31,  11.23,
+   "13:Q2",      7.84,          0.54,       0.81,         0.67,          0.99,    0.3,  11.15,
+   "13:Q3",       7.9,          0.54,       0.85,         0.67,          1.03,    0.3,  11.28,
+   "13:Q4",      8.05,          0.53,       0.86,         0.68,          1.08,   0.32,  11.52,
+   "14:Q1",      8.17,          0.53,       0.88,         0.66,          1.11,   0.31,  11.65,
+   "14:Q2",       8.1,          0.52,       0.91,         0.67,          1.12,   0.32,  11.63,
+   "14:Q3",      8.13,          0.51,       0.93,         0.68,          1.13,   0.33,  11.71,
+   "14:Q4",      8.17,          0.51,       0.96,          0.7,          1.16,   0.34,  11.83,
+   "15:Q1",      8.17,          0.51,       0.97,         0.68,          1.19,   0.33,  11.85,
+   "15:Q2",      8.12,           0.5,       1.01,          0.7,          1.19,   0.34,  11.85,
+   "15:Q3",      8.26,          0.49,       1.05,         0.71,           1.2,   0.35,  12.07,
+   "15:Q4",      8.25,          0.49,       1.06,         0.73,          1.23,   0.35,  12.12,
+   "16:Q1",      8.37,          0.49,       1.07,         0.71,          1.26,   0.35,  12.25,
+   "16:Q2",      8.36,          0.48,        1.1,         0.73,          1.26,   0.36,  12.29,
+   "16:Q3",      8.35,          0.47,       1.14,         0.75,          1.28,   0.37,  12.35,
+   "16:Q4",      8.48,          0.47,       1.16,         0.78,          1.31,   0.38,  12.58,
+   "17:Q1",      8.63,          0.46,       1.17,         0.76,          1.34,   0.37,  12.73,
+   "17:Q2",      8.69,          0.45,       1.19,         0.78,          1.34,   0.38,  12.84,
+   "17:Q3",      8.74,          0.45,       1.21,         0.81,          1.36,   0.39,  12.96,
+   "17:Q4",      8.88,          0.44,       1.22,         0.83,          1.38,   0.39,  13.15,
+   "18:Q1",      8.94,          0.44,       1.23,         0.82,          1.41,   0.39,  13.21,
+   "18:Q2",         9,          0.43,       1.24,         0.83,          1.41,   0.39,  13.29,
+   "18:Q3",      9.14,          0.42,       1.27,         0.84,          1.44,    0.4,  13.51,
+   "18:Q4",      9.12,          0.41,       1.27,         0.87,          1.46,   0.41,  13.54,
+   "19:Q1",      9.24,          0.41,       1.28,         0.85,          1.49,    0.4,  13.67,
+   "19:Q2",      9.41,           0.4,        1.3,         0.87,          1.48,   0.41,  13.86
+  )
+
+```
+
+### Plot a line plot between Student.Loan and Credit.Card
+```{r}
+gph3 <- ggplot(hhd19, aes(x= Student.Loan, y= Credit.Card)) +
+  geom_line()
+```
+
+
+#### 4. We want to add a moving variable in the graph of 3. The function transition_reveal (link) is great for this. You may tempt to add transition_reveal(Quarter) but notice that transition_reveal does not take the current form of Quarter. Hint: You can create a dummy variable running from 1 to the size of the data and make it the transition variable.
+```{r}
+link <- seq(1, length(hhd19$Quarter))
+link
+gph3 +
+  transition_reveal(link)
+```
+
+#### 5. The Quarter variable is not in the right format (date). Create the date column where the date is the first day of each quarter. Plot the graph of Student.Loan by date. Hint Use: the seq.date functions with the increment being three months.
+```{r}
+library(zoo)
+hhd19 <- hhd19 %>% 
+  mutate(date = as.Date(as.yearqtr(Quarter, format = "%y:Q%q")))
+hhd19
+gph5 <- ggplot(hhd19, aes(x= date, y=Student.Loan)) +
+  geom_line()
+gph5
+
+```
+
+#### 6. Add transition_reveal(date) to the plot in Question 5. to reveal the graph by quarters.
+```{r}
+gph6 <- gph5 +
+  transition_reveal(seq.Date(min(hhd19$date) , max(hhd19$date), by= "quarter"))
+gph6
+```
+
+#### 7. Use geom_point and geom_text to plot the moving point and the value of the moving points. Hint: geom_point()+  geom_text(aes(label=Student.Loan)) should work.
+```{r}
+gph6 +
+  geom_point() +
+  geom_text(aes(label = Student.Loan))
+```
+
+#### 8. Include the graphs of other debts to the plot in Question 7, revealing them by date/quarter and differentiating them by colors. Hint: you may want to change the data from long to wide using the gather function.
+```{r}
+hhd19_l <- pivot_longer(hhd19, cols = c(Mortgage, HE.Revolving, Auto.Loan, Credit.Card, Student.Loan, Other, Total))
+hhd19_l
+ggplot(hhd19_l, aes(x=date, y= value, color = name)) +
+  geom_line() +
+  transition_reveal(date) +
+  geom_point() +
+  geom_text(aes(label = value))
+
+```
+
+#### 9. What is the debt that most correlated with the Total debt. Plot the graph of this debt and the total together revealing by years, differentiation by colors. Plot the remaining debt together in another plot, revealing by years, differentiating by colors. Give a comment on the plots. Label and put captions to the plots.
+```{r}
+# Testing for highest correlations with Total
+library(ggcorrplot)
+
+hhd19_n <- hhd19 %>% 
+  select_if(is.numeric)
+
+corr <- round(cor(hhd19_n),1)
+
+ggcorrplot(corr, hc.order = T,
+       type = "lower",
+       lab = T,
+       lab_size = 3,
+       method = "circle",
+       colors = c("tomato2", "white", "springgreen3"),
+       title = "Correlogram of hhd19",
+       ggtheme = theme_bw)
+
+
+hhd19_l_M <- pivot_longer(hhd19, cols = c(Mortgage, Total))
+hhd19_l_M <- hhd19_l_M %>% 
+   select(date, name, value)
+hhd19_O <- hhd19 %>% 
+   mutate(Non_Mort = Total - Mortgage) 
+
+ggplot(hhd19_l_M, aes(x= date, y=value, fill = name)) +
+   geom_area() +
+   labs(title = 'Mortgage and Total Debt from 2003 to 2019',
+        x = 'Time',
+        y = 'Trillions of Debt')
+
+ggplot(hhd19_O, aes(x=date, y=Non_Mort)) +
+   geom_col(fill = "dark green", alpha = 0.8)+ 
+   labs(title = 'Other Debt from 2003 to 2019',
+        x = 'Time',
+        y = 'Trillions of Debt')
+```
+
+#### 10. Use transition_reveal and transition_states to explore the data of the U.S Economy. Plot three animated plots.
+
+```{r}
+def <- tibble::tribble(
+  ~Year, ~Deficit,
+   1962,     -1.2,
+   1963,     -0.8,
+   1964,     -0.9,
+   1965,     -0.2,
+   1966,   -0.473,
+   1967,   -1.031,
+   1968,   -2.798,
+   1969,     0.33,
+   1970,   -0.271,
+   1971,   -2.058,
+   1972,   -1.917,
+   1973,   -1.099,
+   1974,   -0.413,
+   1975,   -3.306,
+   1976,   -4.118,
+   1977,   -2.645,
+   1978,   -2.598,
+   1979,   -1.585,
+   1980,    -2.64,
+   1981,   -2.516,
+   1982,   -3.862,
+   1983,   -5.868,
+   1984,   -4.689,
+   1985,   -4.972,
+   1986,   -4.877,
+   1987,   -3.131,
+   1988,    -3.01,
+   1989,    -2.74,
+   1990,   -3.737,
+   1991,   -4.406,
+   1992,   -4.512,
+   1993,   -3.754,
+   1994,   -2.823,
+   1995,   -2.162,
+   1996,   -1.347,
+   1997,   -0.258,
+   1998,    0.774,
+   1999,    1.321,
+   2000,    2.328,
+   2001,    1.214,
+   2002,    -1.45,
+   2003,   -3.332,
+   2004,   -3.414,
+   2005,    -2.47,
+   2006,   -1.814,
+   2007,   -1.122,
+   2008,   -3.108,
+   2009,     -9.8,
+   2010,   -8.747,
+   2011,    -8.45,
+   2012,   -6.782,
+   2013,   -4.114,
+   2014,   -2.814,
+   2015,   -2.449,
+   2016,   -3.176,
+   2017,   -3.469,
+   2018,  -3.8496
+  )
+
+ggplot(def, aes(x= Year, y=Deficit)) +
+   geom_line() +
+   labs(title = 'US Deficit',
+        subtitle = 'From 1962 to 2018',
+        x = 'Time',
+        y = 'Deficit (100 billions)') +
+   transition_reveal(Year)
+```
+
+```{r warning=FALSE}
+unemp <-tibble::tribble(
+               ~Date, ~Less.than.HS,  ~HS, ~Less.than.Bach, ~College,
+          "Jan-2000",           6.4,  3.4,             2.6,      1.8,
+          "Feb-2000",             6,  3.4,               3,      1.6,
+          "Mar-2000",           6.6,   NA,             2.8,      1.7,
+          "Apr-2000",           6.2,  3.3,             2.6,      1.5,
+          "May-2000",           6.9,  3.4,             2.6,      1.6,
+          "Jun-2000",           6.3,  3.4,             2.7,      1.6,
+          "Jul-2000",           6.4,  3.4,             2.8,      1.7,
+          "Aug-2000",           6.2,  3.7,             2.8,      1.9,
+          "Sep-2000",           6.2,  3.5,             2.6,      1.9,
+          "Oct-2000",           6.4,  3.6,             2.4,      1.6,
+          "Nov-2000",           6.5,  3.5,             2.6,      1.5,
+          "Dec-2000",           5.9,  3.5,             2.7,      1.5,
+          "Jan-2001",           6.7,  3.8,               3,      1.6,
+          "Feb-2001",           7.5,  3.7,             2.8,      1.6,
+          "Mar-2001",           6.8,  3.8,             2.7,        2,
+          "Apr-2001",           6.8,  3.7,             2.9,      2.1,
+          "May-2001",           6.6,  3.9,               3,      2.1,
+          "Jun-2001",           6.9,  3.8,               3,      2.2,
+          "Jul-2001",           6.8,  4.1,               3,      2.2,
+          "Aug-2001",           7.2,  4.4,             3.3,      2.3,
+          "Sep-2001",           7.7,  4.4,             3.4,      2.5,
+          "Oct-2001",           7.6,  4.7,             4.1,      2.6,
+          "Nov-2001",             8,    5,             4.2,      2.9,
+          "Dec-2001",           8.3,  4.9,             4.2,        3,
+          "Jan-2002",           8.2,  5.3,             4.3,      2.9,
+          "Feb-2002",           8.3,  5.3,             4.2,      2.9,
+          "Mar-2002",           8.1,  5.4,             4.3,      2.8,
+          "Apr-2002",           9.1,  5.5,             4.6,      2.9,
+          "May-2002",           8.3,  5.5,             4.8,      2.9,
+          "Jun-2002",           7.8,  5.4,             4.6,        3,
+          "Jul-2002",           8.6,  5.1,             4.4,        3,
+          "Aug-2002",           8.4,  5.2,             4.4,      2.8,
+          "Sep-2002",           7.8,    5,             4.6,      2.9,
+          "Oct-2002",           8.7,  4.9,             4.6,        3,
+          "Nov-2002",             9,  5.2,             4.7,      2.9,
+          "Dec-2002",           8.9,  5.3,             4.9,      2.9,
+          "Jan-2003",           8.8,  5.2,             4.7,        3,
+          "Feb-2003",           8.9,  5.4,             4.7,        3,
+          "Mar-2003",           8.6,  5.5,             4.8,      3.1,
+          "Apr-2003",           8.5,  5.7,             4.8,        3,
+          "May-2003",             9,  5.6,             4.9,        3,
+          "Jun-2003",           9.4,  5.7,             4.9,      3.1,
+          "Jul-2003",           8.8,  5.4,               5,      3.1,
+          "Aug-2003",           9.3,  5.4,             4.9,      3.2,
+          "Sep-2003",           8.6,  5.3,             4.9,      3.2,
+          "Oct-2003",             9,  5.5,             4.8,      3.1,
+          "Nov-2003",           8.7,  5.3,             4.7,      3.1,
+          "Dec-2003",           7.9,  5.4,             4.4,        3,
+          "Jan-2004",           9.1,  4.9,             4.5,      2.9,
+          "Feb-2004",           8.6,    5,             4.3,      2.9,
+          "Mar-2004",           8.8,  5.3,             4.7,      2.9,
+          "Apr-2004",           8.6,  5.3,             4.1,      2.9,
+          "May-2004",           8.8,  5.1,               4,      2.9,
+          "Jun-2004",           8.7,  5.2,             4.1,      2.7,
+          "Jul-2004",           8.2,    5,             4.2,      2.6,
+          "Aug-2004",           8.1,  4.9,             4.1,      2.7,
+          "Sep-2004",           8.7,  4.7,             4.1,      2.6,
+          "Oct-2004",           8.4,  4.8,             4.2,      2.5,
+          "Nov-2004",             8,  4.8,             4.3,      2.5,
+          "Dec-2004",           8.1,  4.8,             4.2,      2.5,
+          "Jan-2005",           7.7,  4.7,             4.1,      2.4,
+          "Feb-2005",           7.8,  4.9,             4.2,      2.4,
+          "Mar-2005",           7.8,  4.7,             3.9,      2.4,
+          "Apr-2005",           8.2,  4.4,             3.9,      2.4,
+          "May-2005",           7.8,  4.5,             3.9,      2.4,
+          "Jun-2005",           6.9,  4.8,             3.9,      2.3,
+          "Jul-2005",           7.5,  4.8,             3.7,      2.3,
+          "Aug-2005",           7.5,  4.7,             3.5,      2.1,
+          "Sep-2005",           8.2,  4.9,             3.7,      2.3,
+          "Oct-2005",           7.3,  4.8,             3.8,      2.3,
+          "Nov-2005",           7.4,  4.8,             3.9,      2.3,
+          "Dec-2005",           7.4,  4.5,             3.9,      2.1,
+          "Jan-2006",             7,  4.4,             3.6,      2.1,
+          "Feb-2006",           7.1,  4.4,             3.6,      2.2,
+          "Mar-2006",           6.9,  4.1,             3.7,      2.2,
+          "Apr-2006",           6.9,  4.4,             3.8,      2.2,
+          "May-2006",             7,  4.3,             3.8,      2.1,
+          "Jun-2006",           7.1,  4.1,             3.5,      2.1,
+          "Jul-2006",           7.1,  4.5,             3.6,        2,
+          "Aug-2006",           6.8,  4.6,             3.5,      1.8,
+          "Sep-2006",           6.4,  4.1,             3.6,      2.1,
+          "Oct-2006",           5.8,  4.1,             3.4,      1.9,
+          "Nov-2006",           6.6,  4.3,             3.4,      1.8,
+          "Dec-2006",           6.7,  4.3,             3.4,      1.8,
+          "Jan-2007",           6.9,  4.3,             3.8,      2.1,
+          "Feb-2007",           7.3,  4.3,             3.6,      1.9,
+          "Mar-2007",           6.9,    4,             3.6,      1.8,
+          "Apr-2007",           7.1,  4.1,             3.6,      1.9,
+          "May-2007",           6.6,  4.4,             3.4,        2,
+          "Jun-2007",           6.7,  4.1,             3.5,        2,
+          "Jul-2007",           7.3,  4.6,             3.6,      2.1,
+          "Aug-2007",           6.5,  4.4,             3.6,      2.1,
+          "Sep-2007",           7.6,  4.5,             3.4,        2,
+          "Oct-2007",           7.3,  4.6,             3.5,      2.1,
+          "Nov-2007",           7.7,  4.5,             3.3,      2.2,
+          "Dec-2007",           7.7,  4.7,             3.8,      2.1,
+          "Jan-2008",           7.7,  4.7,             3.7,      2.1,
+          "Feb-2008",           7.4,  4.7,             3.8,        2,
+          "Mar-2008",           8.4,  5.1,             3.9,      2.1,
+          "Apr-2008",           7.7,    5,               4,      2.1,
+          "May-2008",           8.1,    5,             4.3,      2.2,
+          "Jun-2008",           8.7,  5.1,             4.3,      2.4,
+          "Jul-2008",           8.6,  5.4,             4.6,      2.5,
+          "Aug-2008",           9.7,  5.8,             4.9,      2.8,
+          "Sep-2008",           9.8,  6.2,               5,      2.6,
+          "Oct-2008",          10.3,  6.4,             5.2,      3.1,
+          "Nov-2008",          10.8,    7,             5.5,      3.2,
+          "Dec-2008",          11.1,  7.8,             5.7,      3.6,
+          "Jan-2009",          12.4,  8.2,             6.5,      3.9,
+          "Feb-2009",          13.2,  8.5,             7.3,      4.1,
+          "Mar-2009",            14,  9.2,             7.5,      4.3,
+          "Apr-2009",          14.9,  9.5,             7.7,      4.4,
+          "May-2009",          15.2,   10,             7.8,      4.8,
+          "Jun-2009",          15.6,  9.7,             8.1,      4.8,
+          "Jul-2009",          15.3,  9.5,               8,      4.8,
+          "Aug-2009",          15.6,  9.7,             8.1,      4.8,
+          "Sep-2009",          14.9, 10.6,             8.3,        5,
+          "Oct-2009",          15.2,   11,             8.7,      4.7,
+          "Nov-2009",          14.7, 10.3,             8.8,      4.8,
+          "Dec-2009",            15, 10.6,             8.7,      4.9,
+          "Jan-2010",          15.3, 10.2,             8.6,      4.9,
+          "Feb-2010",          15.8, 10.7,             8.1,      4.9,
+          "Mar-2010",          14.9,   11,             8.4,      4.9,
+          "Apr-2010",          14.7, 10.8,             8.4,      4.8,
+          "May-2010",          14.6, 10.9,             8.2,      4.6,
+          "Jun-2010",          14.2, 10.6,             8.1,      4.4,
+          "Jul-2010",          13.5,   10,             8.3,      4.5,
+          "Aug-2010",          14.1,   10,             8.7,      4.6,
+          "Sep-2010",          15.6,  9.7,             8.9,      4.5,
+          "Oct-2010",            15,  9.8,             8.2,      4.6,
+          "Nov-2010",          15.4,   10,             8.6,        5,
+          "Dec-2010",            15,  9.8,             8.1,      4.8,
+          "Jan-2011",          14.3,  9.5,             8.1,      4.3,
+          "Feb-2011",            14,  9.7,             7.9,      4.3,
+          "Mar-2011",          14.1,  9.7,             7.5,      4.4,
+          "Apr-2011",          14.7,  9.9,             7.5,      4.5,
+          "May-2011",          14.5,  9.6,             7.8,      4.5,
+          "Jun-2011",          14.4,   10,             8.3,      4.3,
+          "Jul-2011",          14.5,  9.1,             8.3,      4.2,
+          "Aug-2011",          14.1,  9.3,             8.3,      4.2,
+          "Sep-2011",          14.3,  9.4,             8.5,      4.2,
+          "Oct-2011",          13.5,  9.4,             8.1,      4.3,
+          "Nov-2011",          12.8,  8.8,             7.7,      4.4,
+          "Dec-2011",          13.7,  8.7,             7.6,      4.1,
+          "Jan-2012",            13,  8.5,             7.1,      4.3,
+          "Feb-2012",          13.1,  8.3,             7.2,      4.2,
+          "Mar-2012",          12.8,  8.1,             7.5,      4.1,
+          "Apr-2012",          12.5,    8,             7.6,        4,
+          "May-2012",          12.9,  8.3,             7.7,      3.9,
+          "Jun-2012",          12.6,  8.6,             7.3,        4,
+          "Jul-2012",          12.4,  8.5,             7.2,      4.1,
+          "Aug-2012",          11.8,  8.6,             6.7,      4.1,
+          "Sep-2012",          11.7,  8.5,             6.6,        4,
+          "Oct-2012",          12.1,  8.3,             6.9,      3.7,
+          "Nov-2012",            12,    8,             6.5,      3.9,
+          "Dec-2012",          11.8,    8,             6.9,        4,
+          "Jan-2013",            12,  8.1,             6.9,      3.8,
+          "Feb-2013",          11.3,  7.9,             6.5,      3.9,
+          "Mar-2013",          11.1,  7.7,             6.3,      3.8,
+          "Apr-2013",          11.6,  7.5,             6.4,      3.9,
+          "May-2013",            11,  7.3,             6.5,      3.9,
+          "Jun-2013",          10.7,  7.7,             6.5,      3.8,
+          "Jul-2013",          10.8,  7.5,             6.1,      3.8,
+          "Aug-2013",          11.1,  7.4,             6.1,      3.4,
+          "Sep-2013",          10.5,  7.6,             6.1,      3.7,
+          "Oct-2013",          10.9,  7.2,             6.4,      3.7,
+          "Nov-2013",          10.7,  7.2,             6.4,      3.4,
+          "Dec-2013",           9.8,    7,             6.2,      3.3,
+          "Jan-2014",           9.4,  6.5,             5.9,      3.3,
+          "Feb-2014",           9.8,  6.4,               6,      3.4,
+          "Mar-2014",           9.4,  6.3,               6,      3.4,
+          "Apr-2014",           8.7,  6.2,             5.7,      3.3,
+          "May-2014",           9.2,  6.5,             5.5,      3.2,
+          "Jun-2014",           9.2,  5.9,             5.2,      3.3,
+          "Jul-2014",           9.5,  6.1,             5.3,      3.1,
+          "Aug-2014",           9.2,  6.1,             5.3,      3.2,
+          "Sep-2014",           8.5,  5.4,             5.4,      2.9,
+          "Oct-2014",           8.1,  5.7,             4.9,        3,
+          "Nov-2014",           8.6,  5.7,             4.9,      3.2,
+          "Dec-2014",           8.6,  5.3,               5,      2.8,
+          "Jan-2015",           8.3,  5.4,             5.2,      2.8,
+          "Feb-2015",           8.2,  5.4,               5,      2.7,
+          "Mar-2015",           8.6,  5.3,             4.8,      2.4,
+          "Apr-2015",           8.5,  5.4,             4.7,      2.7,
+          "May-2015",           8.7,  5.8,             4.4,      2.8,
+          "Jun-2015",           8.2,  5.4,             4.2,      2.5,
+          "Jul-2015",           8.3,  5.5,             4.3,      2.5,
+          "Aug-2015",           7.9,  5.5,             4.3,      2.4,
+          "Sep-2015",           7.9,  5.3,             4.3,      2.5,
+          "Oct-2015",           7.6,  5.2,             4.4,      2.5,
+          "Nov-2015",           6.8,  5.5,             4.4,      2.6,
+          "Dec-2015",           6.5,  5.6,             4.2,      2.5,
+          "Jan-2016",           7.1,  5.2,             4.2,      2.5,
+          "Feb-2016",             7,  5.2,             4.2,      2.5,
+          "Mar-2016",           7.4,  5.3,             4.2,      2.6,
+          "Apr-2016",           7.6,  5.4,             4.2,      2.4,
+          "May-2016",           7.5,  5.1,             3.8,      2.5,
+          "Jun-2016",           7.6,  5.1,             4.2,      2.5,
+          "Jul-2016",           6.4,  5.1,             4.2,      2.5,
+          "Aug-2016",           7.4,    5,             4.2,      2.6,
+          "Sep-2016",           8.5,  5.3,             4.2,      2.5,
+          "Oct-2016",           7.5,  5.5,             3.9,      2.6,
+          "Nov-2016",           7.8,    5,             3.9,      2.4,
+          "Dec-2016",           7.6,  5.1,             3.8,      2.5,
+          "Jan-2017",           7.4,  5.2,             3.8,      2.5,
+          "Feb-2017",           7.6,  4.9,               4,      2.4,
+          "Mar-2017",           6.6,  4.9,             3.7,      2.4,
+          "Apr-2017",           6.4,  4.6,             3.7,      2.4,
+          "May-2017",           6.3,  4.7,               4,      2.3,
+          "Jun-2017",           6.5,  4.6,             3.8,      2.3,
+          "Jul-2017",             7,  4.5,             3.8,      2.3,
+          "Aug-2017",           6.1,    5,             3.7,      2.4,
+          "Sep-2017",           6.7,  4.4,             3.6,      2.3,
+          "Oct-2017",             6,  4.3,             3.7,      2.1,
+          "Nov-2017",           5.2,  4.4,             3.6,      2.1,
+          "Dec-2017",           6.3,  4.2,             3.6,      2.1,
+          "Jan-2018",           5.5,  4.4,             3.4,      2.2,
+          "Feb-2018",           5.6,  4.4,             3.5,      2.2,
+          "Mar-2018",           5.6,  4.3,             3.5,      2.2,
+          "Apr-2018",           5.8,  4.3,             3.4,      2.1,
+          "May-2018",           5.5,  3.9,             3.2,        2,
+          "Jun-2018",           5.6,  4.1,             3.3,      2.3,
+          "Jul-2018",             5,    4,             3.2,      2.2,
+          "Aug-2018",           5.7,  3.9,             3.5,        2,
+          "Sep-2018",           5.6,  3.7,             3.2,        2,
+          "Oct-2018",           5.9,    4,               3,        2,
+          "Nov-2018",           5.6,  3.5,             3.1,      2.2,
+          "Dec-2018",           5.8,  3.8,             3.3,      2.1,
+          "Jan-2019",           5.7,  3.8,             3.4,      2.4,
+          "Feb-2019",           5.3,  3.8,             3.2,      2.2,
+          "Mar-2019",           5.9,  3.7,             3.4,        2,
+          "Apr-2019",           5.4,  3.5,             3.1,      2.1,
+          "May-2019",           5.4,  3.5,             2.8,      2.1,
+          "Jun-2019",           5.3,  3.9,               3,      2.1,
+          "Jul-2019",           5.1,  3.6,             3.2,      2.2,
+          "Aug-2019",           5.4,  3.6,             3.1,      2.1,
+          "Sep-2019",           4.8,  3.6,             2.9,        2
+          )
+
+unemp_l <- pivot_longer(unemp, cols = c(Less.than.HS, HS, Less.than.Bach, College))
+
+unemp_l <- unemp_l %>% 
+  mutate(Date = as.Date(as.yearmon(Date, format = "%b-%Y")))
+unemp_l
+
+ggplot(unemp_l, aes(x=Date, y = value, color = name)) +
+      geom_line() +
+      transition_reveal(Date) +
+      labs(
+         title= 'Unemployment Rat by Education Level',
+         subtitle= 'From 2000 to 2019',
+         x= 'Time',
+         y= 'Unemployment Rate'
+      )
+```
+
+```{r warning=FALSE}
+last <- tibble::tribble(
+       ~Date, ~Quit.Rate, ~Job.Openings,
+  "Dec-2000",         NA,         0.864,
+  "Jan-2001",         NA,          0.89,
+  "Feb-2001",        2.3,         0.822,
+  "Mar-2001",        2.4,         0.765,
+  "Apr-2001",        2.3,         0.758,
+  "May-2001",        2.3,         0.723,
+  "Jun-2001",        2.3,         0.675,
+  "Jul-2001",        2.2,         0.695,
+  "Aug-2001",        2.2,         0.574,
+  "Sep-2001",        2.2,         0.566,
+  "Oct-2001",        2.1,         0.485,
+  "Nov-2001",          2,         0.456,
+  "Dec-2001",          2,         0.427,
+  "Jan-2002",          2,         0.462,
+  "Feb-2002",          2,         0.411,
+  "Mar-2002",          2,          0.43,
+  "Apr-2002",          2,         0.416,
+  "May-2002",        1.9,         0.418,
+  "Jun-2002",        1.9,         0.407,
+  "Jul-2002",        1.9,         0.413,
+  "Aug-2002",          2,         0.425,
+  "Sep-2002",          2,         0.399,
+  "Oct-2002",        1.9,         0.422,
+  "Nov-2002",        1.9,           0.4,
+  "Dec-2002",        1.9,         0.352,
+  "Jan-2003",        1.9,         0.411,
+  "Feb-2003",        1.9,         0.369,
+  "Mar-2003",        1.9,         0.357,
+  "Apr-2003",        1.8,         0.363,
+  "May-2003",        1.8,         0.372,
+  "Jun-2003",        1.8,         0.367,
+  "Jul-2003",        1.8,         0.341,
+  "Aug-2003",        1.8,          0.36,
+  "Sep-2003",        1.8,         0.345,
+  "Oct-2003",        1.8,         0.381,
+  "Nov-2003",        1.8,         0.375,
+  "Dec-2003",        1.9,         0.394,
+  "Jan-2004",        1.8,         0.414,
+  "Feb-2004",        1.9,         0.426,
+  "Mar-2004",        1.9,         0.411,
+  "Apr-2004",        1.9,         0.442,
+  "May-2004",        1.9,         0.458,
+  "Jun-2004",        1.9,         0.404,
+  "Jul-2004",        1.9,         0.479,
+  "Aug-2004",          2,         0.445,
+  "Sep-2004",          2,         0.483,
+  "Oct-2004",        1.9,         0.492,
+  "Nov-2004",          2,         0.424,
+  "Dec-2004",          2,         0.496,
+  "Jan-2005",        2.1,         0.492,
+  "Feb-2005",          2,         0.489,
+  "Mar-2005",        2.1,         0.519,
+  "Apr-2005",        2.1,         0.557,
+  "May-2005",        2.1,         0.502,
+  "Jun-2005",        2.1,         0.541,
+  "Jul-2005",        2.1,         0.586,
+  "Aug-2005",        2.1,         0.566,
+  "Sep-2005",        2.2,         0.579,
+  "Oct-2005",        2.2,         0.566,
+  "Nov-2005",        2.2,         0.544,
+  "Dec-2005",        2.1,          0.57,
+  "Jan-2006",        2.1,         0.623,
+  "Feb-2006",        2.2,         0.593,
+  "Mar-2006",        2.2,         0.665,
+  "Apr-2006",        2.1,          0.69,
+  "May-2006",        2.1,         0.645,
+  "Jun-2006",        2.1,         0.661,
+  "Jul-2006",        2.2,         0.623,
+  "Aug-2006",        2.2,         0.668,
+  "Sep-2006",        2.2,         0.698,
+  "Oct-2006",        2.2,          0.69,
+  "Nov-2006",        2.2,         0.659,
+  "Dec-2006",        2.2,         0.661,
+  "Jan-2007",        2.2,         0.668,
+  "Feb-2007",        2.2,         0.667,
+  "Mar-2007",        2.2,         0.732,
+  "Apr-2007",        2.1,         0.704,
+  "May-2007",        2.2,         0.695,
+  "Jun-2007",        2.1,           0.7,
+  "Jul-2007",        2.1,         0.653,
+  "Aug-2007",        2.1,         0.649,
+  "Sep-2007",        2.1,         0.653,
+  "Oct-2007",        2.1,         0.646,
+  "Nov-2007",          2,         0.627,
+  "Dec-2007",          2,         0.576,
+  "Jan-2008",          2,         0.599,
+  "Feb-2008",        2.1,         0.565,
+  "Mar-2008",          2,         0.538,
+  "Apr-2008",          2,          0.54,
+  "May-2008",          2,         0.505,
+  "Jun-2008",          2,         0.449,
+  "Jul-2008",        1.9,         0.425,
+  "Aug-2008",        1.8,         0.393,
+  "Sep-2008",        1.8,         0.341,
+  "Oct-2008",        1.8,         0.338,
+  "Nov-2008",        1.7,           0.3,
+  "Dec-2008",        1.6,         0.271,
+  "Jan-2009",        1.5,         0.226,
+  "Feb-2009",        1.5,          0.22,
+  "Mar-2009",        1.5,         0.188,
+  "Apr-2009",        1.4,         0.169,
+  "May-2009",        1.3,         0.178,
+  "Jun-2009",        1.3,         0.171,
+  "Jul-2009",        1.3,         0.155,
+  "Aug-2009",        1.3,          0.16,
+  "Sep-2009",        1.3,         0.165,
+  "Oct-2009",        1.3,         0.158,
+  "Nov-2009",        1.3,          0.16,
+  "Dec-2009",        1.4,         0.165,
+  "Jan-2010",        1.4,         0.188,
+  "Feb-2010",        1.4,         0.175,
+  "Mar-2010",        1.4,         0.176,
+  "Apr-2010",        1.4,          0.21,
+  "May-2010",        1.4,         0.203,
+  "Jun-2010",        1.5,         0.194,
+  "Jul-2010",        1.4,         0.215,
+  "Aug-2010",        1.4,         0.207,
+  "Sep-2010",        1.4,           0.2,
+  "Oct-2010",        1.4,         0.224,
+  "Nov-2010",        1.4,         0.208,
+  "Dec-2010",        1.4,         0.207,
+  "Jan-2011",        1.4,         0.221,
+  "Feb-2011",        1.5,         0.232,
+  "Mar-2011",        1.5,         0.237,
+  "Apr-2011",        1.5,         0.239,
+  "May-2011",        1.5,         0.231,
+  "Jun-2011",        1.5,         0.248,
+  "Jul-2011",        1.5,         0.267,
+  "Aug-2011",        1.5,         0.243,
+  "Sep-2011",        1.5,          0.27,
+  "Oct-2011",        1.5,         0.269,
+  "Nov-2011",        1.5,         0.262,
+  "Dec-2011",        1.5,          0.28,
+  "Jan-2012",        1.5,         0.305,
+  "Feb-2012",        1.5,         0.281,
+  "Mar-2012",        1.6,         0.313,
+  "Apr-2012",        1.6,         0.307,
+  "May-2012",        1.6,         0.305,
+  "Jun-2012",        1.6,         0.309,
+  "Jul-2012",        1.6,         0.299,
+  "Aug-2012",        1.5,         0.308,
+  "Sep-2012",        1.5,         0.319,
+  "Oct-2012",        1.5,         0.314,
+  "Nov-2012",        1.5,         0.315,
+  "Dec-2012",        1.5,         0.312,
+  "Jan-2013",        1.6,         0.314,
+  "Feb-2013",        1.6,         0.333,
+  "Mar-2013",        1.7,         0.349,
+  "Apr-2013",        1.7,         0.347,
+  "May-2013",        1.6,         0.358,
+  "Jun-2013",        1.6,         0.355,
+  "Jul-2013",        1.6,         0.348,
+  "Aug-2013",        1.7,         0.365,
+  "Sep-2013",        1.7,         0.364,
+  "Oct-2013",        1.7,         0.383,
+  "Nov-2013",        1.7,         0.371,
+  "Dec-2013",        1.7,         0.384,
+  "Jan-2014",        1.7,         0.405,
+  "Feb-2014",        1.7,          0.42,
+  "Mar-2014",        1.7,         0.423,
+  "Apr-2014",        1.8,         0.481,
+  "May-2014",        1.8,         0.484,
+  "Jun-2014",        1.8,         0.528,
+  "Jul-2014",        1.8,         0.512,
+  "Aug-2014",        1.8,         0.561,
+  "Sep-2014",        1.9,         0.526,
+  "Oct-2014",        1.9,         0.564,
+  "Nov-2014",        1.9,         0.519,
+  "Dec-2014",        1.8,         0.571,
+  "Jan-2015",        1.9,         0.604,
+  "Feb-2015",        1.9,         0.628,
+  "Mar-2015",          2,         0.614,
+  "Apr-2015",        1.9,         0.672,
+  "May-2015",        1.9,         0.634,
+  "Jun-2015",        1.9,         0.638,
+  "Jul-2015",        1.9,          0.75,
+  "Aug-2015",          2,          0.69,
+  "Sep-2015",          2,         0.691,
+  "Oct-2015",          2,         0.738,
+  "Nov-2015",          2,         0.696,
+  "Dec-2015",          2,         0.717,
+  "Jan-2016",          2,         0.771,
+  "Feb-2016",        2.1,          0.74,
+  "Mar-2016",          2,         0.775,
+  "Apr-2016",        2.1,         0.741,
+  "May-2016",        2.1,         0.757,
+  "Jun-2016",        2.1,         0.741,
+  "Jul-2016",        2.1,         0.791,
+  "Aug-2016",        2.1,         0.732,
+  "Sep-2016",        2.1,         0.735,
+  "Oct-2016",        2.1,         0.718,
+  "Nov-2016",        2.1,         0.784,
+  "Dec-2016",        2.1,         0.777,
+  "Jan-2017",        2.1,         0.743,
+  "Feb-2017",        2.1,          0.79,
+  "Mar-2017",        2.2,         0.826,
+  "Apr-2017",        2.1,         0.877,
+  "May-2017",        2.1,         0.833,
+  "Jun-2017",        2.1,         0.917,
+  "Jul-2017",        2.1,         0.917,
+  "Aug-2017",        2.1,         0.893,
+  "Sep-2017",        2.1,         0.921,
+  "Oct-2017",        2.2,         0.972,
+  "Nov-2017",        2.2,         0.922,
+  "Dec-2017",        2.2,         0.944,
+  "Jan-2018",        2.1,         0.992,
+  "Feb-2018",        2.1,         0.977,
+  "Mar-2018",        2.1,         1.063,
+  "Apr-2018",        2.2,         1.122,
+  "May-2018",        2.2,         1.163,
+  "Jun-2018",        2.2,         1.131,
+  "Jul-2018",        2.3,         1.192,
+  "Aug-2018",        2.3,         1.185,
+  "Sep-2018",        2.3,         1.235,
+  "Oct-2018",        2.3,         1.242,
+  "Nov-2018",        2.3,         1.267,
+  "Dec-2018",        2.3,         1.188,
+  "Jan-2019",        2.3,         1.167,
+  "Feb-2019",        2.3,         1.145,
+  "Mar-2019",        2.3,         1.203,
+  "Apr-2019",        2.3,         1.266,
+  "May-2019",        2.3,         1.254,
+  "Jun-2019",        2.3,         1.213,
+  "Jul-2019",        2.3,         1.183,
+  "Aug-2019",        2.3,         1.167
+  )
+last_l <- pivot_longer(last, cols = c(Quit.Rate, Job.Openings))
+
+last_l <- last_l %>% 
+  mutate(Date = as.Date(as.yearmon(Date, format = "%b-%Y")))
+last_l
+
+ggplot(last_l, aes(x= Date, y=value, color=name)) +
+   geom_line()+
+   transition_reveal(Date)
+```
+
